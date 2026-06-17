@@ -1,0 +1,19 @@
+[package]
+name = "efi-launcher"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "efi-launcher"
+path = "src/main.rs"
+
+[dependencies]
+uefi = { version = "0.33", features = ["alloc", "global_allocator", "panic_handler"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+
+[profile.dev]
+opt-level = 1
