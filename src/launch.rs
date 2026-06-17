@@ -23,7 +23,7 @@ pub fn run(path: &str) -> Result<(), &'static str> {
     // The compiler hinted: the variant is called FromDevicePath, not FromFilePath
     let new_image = uefi::boot::load_image(
         image,
-        LoadImageSource::FromDevicePath {
+        LoadImageSource::boot_policy {
             device_path: dp,
             from_boot_manager: false,
         },
