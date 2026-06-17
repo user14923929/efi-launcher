@@ -1,5 +1,4 @@
-//! Запуск EFI-файла через LoadImage + StartImage.
-//! В uefi 0.33 новый API: uefi::boot::load_image / start_image.
+//! Launch an EFI file via LoadImage + StartImage.
 
 extern crate alloc;
 
@@ -12,26 +11,27 @@ pub fn run(path: &str) -> Result<(), &'static str> {
     let image = uefi::boot::image_handle();
 
     let path_cs = uefi::CString16::try_from(path)
-        .map_err(|_| "Некорректный путь")?;
+        .map_err(|_| "Invalid path")?;
 
     let mut buf = [MaybeUninit::<u8>::uninit(); 512];
     let dp = DevicePathBuilder::with_buf(&mut buf)
         .push(&FilePath { path_name: &path_cs })
-        .map_err(|_| "Ошибка построения DevicePath")?
+        .map_err(|_| "DevicePath construction error")?
         .finalize()
-        .map_err(|_| "Ошибка финализации DevicePath")?;
+        .map_err(|_| "DevicePath finalization error")?;
 
+    // The compiler hinted: the variant is called FromDevicePath, not FromFilePath
     let new_image = uefi::boot::load_image(
         image,
-        LoadImageSource::FromFilePath {
-            file_path: dp,
+        LoadImageSource::FromDevicePath {
+            device_path: dp,
             from_boot_manager: false,
         },
     )
-    .map_err(|_| "LoadImage: не удалось загрузить файл")?;
+    .map_err(|_| "LoadImage: failed to load file")?;
 
     uefi::boot::start_image(new_image)
-        .map_err(|_| "StartImage: образ завершился с ошибкой")?;
+        .map_err(|_| "StartImage: image exited with error")?;
 
     Ok(())
 }

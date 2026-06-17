@@ -11,7 +11,7 @@ mod ui;
 use alloc::vec::Vec;
 use uefi::prelude::*;
 use uefi::proto::media::file::{File, FileAttribute, FileMode};
-use uefi::proto::media::fs::SimpleFileSystem;
+use uefi::runtime::ResetType;
 
 #[entry]
 fn main() -> Status {
@@ -31,7 +31,7 @@ fn main() -> Status {
     };
 
     if entries.is_empty() {
-        screen.error("launcher.cfg: нет ни одной записи [entry]");
+        screen.error("launcher.cfg: no [entry] records found");
         screen.wait_key();
         return Status::ABORTED;
     }
@@ -40,7 +40,7 @@ fn main() -> Status {
         let choice = menu::run(&mut screen, &entries);
         match choice {
             menu::Action::Launch(idx) => {
-                screen.status("Запуск...");
+                screen.status("Launching...");
                 match launch::run(&entries[idx].path) {
                     Ok(_) => {}
                     Err(e) => {
@@ -50,18 +50,10 @@ fn main() -> Status {
                 }
             }
             menu::Action::Reboot => {
-                uefi::runtime::reset(
-                    uefi::table::runtime::ResetType::WARM,
-                    Status::SUCCESS,
-                    None,
-                );
+                uefi::runtime::reset(ResetType::WARM, Status::SUCCESS, None);
             }
             menu::Action::Shutdown => {
-                uefi::runtime::reset(
-                    uefi::table::runtime::ResetType::SHUTDOWN,
-                    Status::SUCCESS,
-                    None,
-                );
+                uefi::runtime::reset(ResetType::SHUTDOWN, Status::SUCCESS, None);
             }
         }
     }
@@ -69,16 +61,13 @@ fn main() -> Status {
 
 fn load_config() -> Result<Vec<config::Entry>, &'static str> {
     let image = uefi::boot::image_handle();
-
-    let fs_handle = uefi::boot::get_image_file_system(image)
-        .map_err(|_| "Не удалось получить файловую систему")?;
-
-    let mut sfs = uefi::boot::open_protocol_exclusive::<SimpleFileSystem>(fs_handle)
-        .map_err(|_| "SimpleFileSystem недоступен")?;
+    // get_image_file_system returns ScopedProtocol<SimpleFileSystem> directly
+    let mut sfs = uefi::boot::get_image_file_system(image)
+        .map_err(|_| "Failed to get file system")?;
 
     let mut root = sfs
         .open_volume()
-        .map_err(|_| "Не удалось открыть корень ESP")?;
+        .map_err(|_| "Failed to open ESP root")?;
 
     let mut file = root
         .open(
@@ -86,14 +75,14 @@ fn load_config() -> Result<Vec<config::Entry>, &'static str> {
             FileMode::Read,
             FileAttribute::empty(),
         )
-        .map_err(|_| "Файл launcher.cfg не найден на ESP")?
+        .map_err(|_| "launcher.cfg not found on ESP")?
         .into_regular_file()
-        .ok_or("launcher.cfg — не обычный файл")?;
+        .ok_or("launcher.cfg is not a regular file")?;
 
     let mut raw: Vec<u8> = Vec::new();
     let mut buf = [0u8; 4096];
     loop {
-        let n = file.read(&mut buf).map_err(|_| "Ошибка чтения launcher.cfg")?;
+        let n = file.read(&mut buf).map_err(|_| "Error reading launcher.cfg")?;
         if n == 0 { break; }
         raw.extend_from_slice(&buf[..n]);
     }

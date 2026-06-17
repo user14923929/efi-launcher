@@ -1,88 +1,42 @@
 name: Build EFI Launcher
-
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
-
 env:
   CARGO_TERM_COLOR: always
   TARGET: x86_64-unknown-uefi
-
 jobs:
   build:
-    name: Build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust nightly + target
-        uses: dtolnay/rust-toolchain@nightly
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rust-src
           targets: ${{ env.TARGET }}
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-
       - name: Build release
         run: |
           cargo build --release \
             -Z build-std=core,compiler_builtins,alloc \
             -Z build-std-features=compiler-builtins-mem \
             --target ${{ env.TARGET }}
-
       - name: Copy EFI to ESP
         run: |
           mkdir -p esp/EFI/BOOT
           cp target/${{ env.TARGET }}/release/efi-launcher.efi esp/EFI/BOOT/BOOTX64.EFI
-          echo "EFI size: $(du -sh esp/EFI/BOOT/BOOTX64.EFI)"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: efi-launcher-${{ github.sha }}
           path: |
             esp/EFI/BOOT/BOOTX64.EFI
             esp/launcher.cfg
           retention-days: 30
-
-  release:
-    name: Release
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: efi-launcher-${{ github.sha }}
-          path: dist/
-
-      - name: Create release archive
-        run: |
-          cd dist
-          zip -r ../efi-launcher.zip .
-          echo "Archive: $(du -sh ../efi-launcher.zip)"
-
-      - name: Upload release archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: efi-launcher-release
-          path: efi-launcher.zip

@@ -1,42 +1,42 @@
 # EFI Launcher
 
-Минималистичный UEFI-загрузчик на Rust — запускает `.efi`-файлы по меню из конфига.  
-Аналог Ventoy, но для EFI-бинарников вместо ISO-образов.
+Minimal UEFI bootloader in Rust — launches `.efi` files from a menu defined in a config.  
+Like Ventoy, but for EFI binaries instead of ISO images.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │          EFI Launcher  v0.1  |  github.com/you/efi-launcher                    │
 ├────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                │
-│  > M  Memtest86+ — диагностика RAM          \tools\memtest86.efi               │
-│    L  GRUB → Arch Linux (CachyOS)           \tools\grubx64.efi                 │
-│    W  Windows Boot Manager                  \tools\bootmgfw.efi                │
-│    $  UEFI Shell                            \tools\shellx64.efi                │
+│  > M  Memtest86+ — RAM diagnostics             \tools\memtest86.efi            │
+│    L  GRUB → System              \tools\grubx64.efi                            │
+│    W  Windows Boot Manager                     \tools\bootmgfw.efi             │
+│    $  UEFI Shell                               \tools\shellx64.efi             │
 │  ─────────────────────────────────────────────────────────────────────────     │
-│    ↺  Перезагрузить                                                            │
-│    ⏻  Выключить                                                                │
+│    ↺  Reboot                                                                   │
+│    ⏻  Shutdown                                                                 │
 │                                                                                │
-│  ↑↓  выбор     Enter  запустить     R  перезагрузить     S  выключить         │
+│  ↑↓  select     Enter  launch     R  reboot     S  shutdown                    │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Возможности
+## Features
 
-- Текстовое TUI меню (SimpleTextOutput — работает на любом UEFI)
-- Конфиг `launcher.cfg` в формате упрощённого TOML прямо на ESP
-- Таймаут с автовыбором записи по умолчанию
-- Быстрые клавиши R (reboot) / S (shutdown)
-- Запуск через стандартные `LoadImage` + `StartImage`
-- Сборка в ~30 КБ EFI-бинарника
+- Text TUI menu (SimpleTextOutput — works on any UEFI)
+- Config `launcher.cfg` in simplified TOML format directly on the ESP
+- Timeout with auto-selection of the default entry
+- Hotkeys R (reboot) / S (shutdown)
+- Launch via standard `LoadImage` + `StartImage`
+- Builds into ~30 KB EFI binary
 
-## Структура ESP
+## ESP layout
 
 ```
 ESP/
 ├── EFI/
 │   └── BOOT/
-│       └── BOOTX64.EFI   ← лаунчер (fallback bootloader)
-├── launcher.cfg           ← конфиг
+│       └── BOOTX64.EFI   ← launcher (fallback bootloader)
+├── launcher.cfg           ← config
 └── tools/
     ├── memtest86.efi
     ├── grubx64.efi
@@ -46,8 +46,8 @@ ESP/
 ## launcher.cfg
 
 ```toml
-timeout = 10    # секунд до автовыбора (0 = ждать вечно)
-default = 0     # индекс записи по умолчанию
+timeout = 10    # seconds before auto-selection (0 = wait forever)
+default = 0     # default entry index
 
 [[entry]]
 title = "Memtest86+"
@@ -60,9 +60,9 @@ path  = "\\tools\\grubx64.efi"
 icon  = "L"
 ```
 
-## Сборка
+## Build
 
-Нужен **Rust nightly** (для `build-std`):
+Requires **Rust nightly** (for `build-std`):
 
 ```bash
 rustup toolchain install nightly
@@ -70,14 +70,14 @@ rustup target add x86_64-unknown-uefi --toolchain nightly
 rustup component add rust-src --toolchain nightly
 ```
 
-Сборка и копирование в `esp/`:
+Build and copy to `esp/`:
 
 ```bash
 chmod +x build.sh
 ./build.sh
 ```
 
-## Тест в QEMU
+## QEMU test
 
 ```bash
 # Arch/CachyOS
@@ -87,13 +87,13 @@ chmod +x run-qemu.sh
 ./run-qemu.sh
 ```
 
-## Запись на USB
+## Write to USB
 
 ```bash
-# Монтируем ESP-раздел на флешке
+# Mount the ESP partition on the flash drive
 sudo mount /dev/sdX1 /mnt/esp
 
-# Копируем
+# Copy files
 sudo cp -r esp/* /mnt/esp/
 
 sudo umount /mnt/esp
@@ -101,9 +101,9 @@ sudo umount /mnt/esp
 
 ## CI
 
-GitHub Actions собирает EFI-бинарник на каждый пуш в `main`  
-и публикует архив `efi-launcher.zip` как артефакт релиза.
+GitHub Actions builds the EFI binary on every push to `main`  
+and publishes `efi-launcher.zip` as a release artifact.
 
-## Лицензия
+## License
 
 MIT
